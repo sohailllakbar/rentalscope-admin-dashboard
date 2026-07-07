@@ -35,6 +35,7 @@ export default function SplashScreen({ visible }: { visible: boolean }) {
             alt="Tenant Trust Logo"
             fill
             priority
+            sizes="(min-width: 768px) 224px, 176px"
             className="object-contain drop-shadow-2xl"
           />
         </motion.div>

@@ -13,15 +13,9 @@ import ConfirmationModal from "@/components/common/ConfirmationModal";
 import toast from "react-hot-toast";
 import { apiRequest } from "@/lib/apiHelper/api";
 import EmptyState from "@/components/common/EmptyState";
-import placeholderImage from "@/assets/icons/common/placeholder-image.jpg";
+
 
 const BASE_URL = "https://tenanttrust.appistansoft.com";
-
-type MediaItem = {
-  type: "image" | "video";
-  url: string;
-  thumbnail?: string;
-};
 
 interface PropertyDetail {
   id: number;
@@ -36,56 +30,11 @@ interface PropertyDetail {
   endDate: string;
   rentDeadline: string;
   description: string;
-  amenities: string | string[] | null;
-  images: string | string[] | null;
-  landlord?: {
-    name?: string;
+  amenities: string[] | null;
+  images: string[] | string | null;
+  landlord: {
+    name: string;
   };
-}
-
-function parseStringArray(value: string | string[] | null | undefined): string[] {
-  if (!value) return [];
-
-  if (Array.isArray(value)) {
-    return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
-  }
-
-  if (typeof value !== "string") return [];
-
-  const trimmed = value.trim();
-  if (!trimmed) return [];
-
-  try {
-    const parsed = JSON.parse(trimmed);
-
-    if (Array.isArray(parsed)) {
-      return parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
-    }
-
-    if (typeof parsed === "string") {
-      return parseStringArray(parsed);
-    }
-  } catch {
-    return trimmed
-      .replace(/^\[|\]$/g, "")
-      .split(",")
-      .map((item) => item.replace(/^"|"$/g, "").trim())
-      .filter(Boolean);
-  }
-
-  return [];
-}
-
-function normalizeMediaUrl(file: string) {
-  if (file.startsWith("http")) return file;
-  if (file.startsWith("/uploads/")) return `${BASE_URL}${file}`;
-  if (file.startsWith("uploads/")) return `${BASE_URL}/${file}`;
-  if (file.startsWith("/")) return `${BASE_URL}${file}`;
-  return `${BASE_URL}/uploads/${file}`;
-}
-
-function isVideo(file: string) {
-  return /\.(mp4|mov|webm|avi|mkv)$/i.test(file);
 }
 
 export default function PropertyDetailPage() {
@@ -108,7 +57,7 @@ export default function PropertyDetailPage() {
     if (!property) return;
 
     try {
-      setConfirmLoading(true);
+      setConfirmLoading(true); // ✅ START LOADING
 
       await apiRequest(`/api/properties/property/delete/${property.id}`, {
         method: "DELETE",
@@ -123,26 +72,22 @@ export default function PropertyDetailPage() {
       );
     } finally {
       setIsModalOpen(false);
-      setConfirmLoading(false);
+      setConfirmLoading(false); // ✅ START LOADING
     }
   };
 
   useEffect(() => {
     const fetchProperty = async () => {
       try {
-        setLoading(true);
         const result = await apiRequest("/api/properties/properties/getall");
-        const list = Array.isArray(result.data) ? result.data : [];
 
-        const found = list.find(
-          (p: PropertyDetail) => Number(p.id) === Number(id),
+        const found = result.data.find(
+          (p: PropertyDetail) => p.id === Number(id),
         );
 
         setProperty(found || null);
       } catch (error) {
         console.error(error);
-        toast.error("Failed to load property details");
-        setProperty(null);
       } finally {
         setLoading(false);
       }
@@ -159,21 +104,33 @@ export default function PropertyDetailPage() {
     );
   }
 
+
+
+
   if (!property) {
-    return (
-      <EmptyState image="/logos/no-data-image.svg" title="Property not found" />
-    );
+    return <EmptyState
+      image="/logos/no-data-image.svg"
+      title="Property not found"
+    />
   }
 
-  const images = parseStringArray(property.images);
-  const amenities = parseStringArray(property.amenities);
-  const firstImage = images.find((file) => !isVideo(file));
+  const images = Array.isArray(property.images)
+    ? property.images
+    : (() => {
+        try {
+          return JSON.parse(property.images || "[]");
+        } catch {
+          return property.images
+            ? property.images.split(",").map((img) => img.trim()).filter(Boolean)
+            : [];
+        }
+      })();
 
-  const mainImage = firstImage ? normalizeMediaUrl(firstImage) : placeholderImage.src;
+  const mainImage = images.length ? `${BASE_URL}/uploads/${images[0]}` : "";
 
-  const media: MediaItem[] = images.map((file) => ({
-    type: isVideo(file) ? "video" : "image",
-    url: normalizeMediaUrl(file),
+  const media = images.map((img: string) => ({
+    type: "image",
+    url: `${BASE_URL}/uploads/${img}`,
   }));
 
   return (
@@ -205,7 +162,7 @@ export default function PropertyDetailPage() {
             endTenancy={property.endDate}
             paymentDeadline={property.rentDeadline}
             description={property.description}
-            amenities={amenities}
+            amenities={property.amenities}
             onDelete={handleDeleteClick}
           />
         </div>
@@ -216,7 +173,7 @@ export default function PropertyDetailPage() {
       </div>
       <ConfirmationModal
         isOpen={isModalOpen}
-        isLoading={confirmLoading}
+        isLoading={confirmLoading} // ✅ PASS LOADING STATE
         onClose={() => setIsModalOpen(false)}
         onConfirm={confirmDelete}
         title="Delete Property"

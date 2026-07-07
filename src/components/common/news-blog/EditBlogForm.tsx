@@ -2,6 +2,7 @@
 
 import NewsBlogForm from "./NewsBlogForm";
 import { apiRequest } from "@/lib/apiHelper/api";
+import { clearBlogCache } from "@/lib/cache/blogCache";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 
@@ -28,6 +29,7 @@ export default function EditBlogForm({ initialData, id }: Props) {
       });
 
       if (res.success) {
+        clearBlogCache();
         toast.success("Blog updated successfully");
                 router.push("/admin/news-blogs");
 
@@ -39,5 +41,13 @@ export default function EditBlogForm({ initialData, id }: Props) {
     }
   };
 
-  return <NewsBlogForm initialData={initialData} onSubmit={handleUpdate} />;
+  return (
+    <NewsBlogForm
+      initialData={initialData}
+      onSubmit={handleUpdate}
+      submitLabel="Update"
+      submittingLabel="Updating..."
+      resetAfterSubmit={false}
+    />
+  );
 }

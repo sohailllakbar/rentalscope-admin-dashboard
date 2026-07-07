@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/apiHelper/api";
 import { clearVersionCache } from "@/lib/cache/versionCache";
 import toast from "react-hot-toast";
+import { CalendarDays } from "lucide-react";
 
 export default function AddVersionControlPage() {
   const router = useRouter();
@@ -16,9 +17,7 @@ export default function AddVersionControlPage() {
   const [description, setDescription] = useState("");
 
   const [loading, setLoading] = useState(false);
-
-  // ✅ hidden real date input
-  const hiddenDateRef = useRef<HTMLInputElement>(null);
+  const releaseDateRef = useRef<HTMLInputElement>(null);
 
   // =============================
   // Create Version
@@ -38,20 +37,21 @@ export default function AddVersionControlPage() {
     try {
       setLoading(true);
 
+      const formData = new FormData();
+      formData.append("deviceType", deviceType);
+      formData.append("versionNumber", versionNumber);
+      formData.append("status", status);
+      formData.append("releaseDate", releaseDate);
+      formData.append("description", description);
+
       const result = await apiRequest("/api/version/version/control/add", {
         method: "POST",
-        body: JSON.stringify({
-          deviceType,
-          versionNumber,
-          status,
-          releaseDate,
-          description,
-        }),
+        body: formData,
       });
 
       if (result.success) {
-        toast.success(result.message || "Version created successfully");
         clearVersionCache();
+        toast.success(result.message || "Version created successfully");
 
         setVersionNumber("");
         setReleaseDate("");
@@ -105,7 +105,7 @@ export default function AddVersionControlPage() {
                 />
               </div>
 
-              {/* ✅ Release Date (NO mm/dd/yyyy EVER) */}
+              {/* Release Date */}
               <div className="space-y-2">
                 <label
                   htmlFor="releaseDate"
@@ -114,29 +114,27 @@ export default function AddVersionControlPage() {
                   Release Date
                 </label>
 
-                <div
-                  className="relative"
-                  onClick={() => hiddenDateRef.current?.showPicker()}
-                >
-                  {/* Visible Input */}
+                <div className="relative">
                   <input
                     id="releaseDate"
-                    type="text"
-                    value={releaseDate}
-                    readOnly
-                    placeholder="Select date"
-                    className="h-12 w-full cursor-pointer rounded border border-black px-4 pr-10 text-base focus:border-[#0E86E8] focus:ring-1 focus:ring-[#0E86E82E] focus:outline-none"
-                  />
-
-                  {/* Hidden Real Date Input */}
-                  <input
-                    aria-label="date"
+                    ref={releaseDateRef}
                     type="date"
-                    ref={hiddenDateRef}
                     value={releaseDate}
                     onChange={(e) => setReleaseDate(e.target.value)}
-                    className="pointer-events-none absolute inset-0 opacity-0"
+                    className="h-12 w-full cursor-pointer rounded border border-black px-4 pr-12 text-base focus:border-[#0E86E8] focus:ring-1 focus:ring-[#0E86E82E] focus:outline-none"
                   />
+
+                  <button
+                    type="button"
+                    aria-label="Open release date calendar"
+                    onClick={() => {
+                      releaseDateRef.current?.showPicker?.();
+                      releaseDateRef.current?.focus();
+                    }}
+                    className="absolute top-1/2 right-3 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-[#0D80E1]"
+                  >
+                    <CalendarDays size={22} strokeWidth={2.2} />
+                  </button>
                 </div>
               </div>
 

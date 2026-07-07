@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import toast from "react-hot-toast";
 
 import PageHeader from "@/components/common/PageHeader";
 import AddAndFilterControls from "@/components/common/Management Managers/AddAndFilterControls";
@@ -14,8 +13,9 @@ import ErrorState from "@/components/common/ErrorState";
 
 import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/apiHelper/api";
+import toast from "react-hot-toast";
 
-// TYPES + CACHE
+// ✅ TYPES + CACHE
 import { Version, ApiVersion, Platform } from "@/types/version";
 import {
   clearVersionCache,
@@ -37,6 +37,9 @@ export default function VersionControlPage() {
 
   const entriesPerPage = 10;
   const [currentPage, setCurrentPage] = useState(1);
+  const [updatingStatusId, setUpdatingStatusId] = useState<
+    string | number | null
+  >(null);
 
   /* ================================
       FORMAT
@@ -44,7 +47,7 @@ export default function VersionControlPage() {
   const formatVersions = (versions: ApiVersion[]): Version[] =>
     versions.map((v) => ({
       id: v.id,
-      versionNumber: String(v.versionNumber),
+      versionNumber: `Version ${v.versionNumber}`,
       description: v.description,
       releaseDate: new Date(v.releaseDate).toLocaleDateString(),
       status: v.status,
@@ -141,24 +144,36 @@ export default function VersionControlPage() {
     router.push(`/admin/version-control/edit/${id}`);
   };
 
-  const handleStatusChange = async (
-    versionId: string | number,
-    status: string,
-  ) => {
-    const res = await apiRequest(`/api/version/version/status/${versionId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
-    });
+  const handleStatusChange = async (id: string | number, status: string) => {
+    const currentVersion = versions.find((version) => version.id === id);
 
-    setVersions((prev) =>
-      prev.map((version) =>
-        version.id === Number(versionId) || version.id === versionId
-          ? { ...version, status: res.data?.status ?? status }
-          : version,
-      ),
-    );
-    clearVersionCache();
-    toast.success(res.message || "Version status updated successfully");
+    if (!currentVersion || currentVersion.status === status) return;
+
+    const previousVersions = versions;
+
+    try {
+      setUpdatingStatusId(id);
+      setVersions((prev) =>
+        prev.map((version) =>
+          version.id === id ? { ...version, status } : version,
+        ),
+      );
+
+      await apiRequest(`/api/version/version/status/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      });
+
+      clearVersionCache();
+      toast.success("Version status updated successfully");
+    } catch (err) {
+      setVersions(previousVersions);
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update status",
+      );
+    } finally {
+      setUpdatingStatusId(null);
+    }
   };
 
   /* ================================
@@ -207,6 +222,7 @@ export default function VersionControlPage() {
                     index={index}
                     onEdit={handleEdit}
                     onStatusChange={handleStatusChange}
+                    isStatusUpdating={updatingStatusId === version.id}
                   />
                 ))
               ) : (

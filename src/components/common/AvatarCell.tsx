@@ -1,5 +1,9 @@
+"use client";
+
 // components/ui/AvatarCell.tsx
 import Image from "next/image";
+import { useState } from "react";
+import placeholderImage from "@/assets/icons/common/placeholder-image.jpg";
 
 type AvatarCellProps = {
   src: string | null | undefined;  // URL from backend (can be null/undefined)
@@ -14,8 +18,9 @@ export default function AvatarCell({
   size = 40,
   className = "",
 }: AvatarCellProps) {
-  // Fallback image if no src (gray placeholder)
-  const fallbackSrc = "/images/placeholder-avatar.png"; // add a gray circle placeholder in public/images/
+  const fallbackSrc = placeholderImage.src;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const imageSrc = src && src !== failedSrc ? src : fallbackSrc;
 
   return (
     <div
@@ -27,14 +32,12 @@ export default function AvatarCell({
       style={{ width: `${size}px`, height: `${size}px` }}
     >
       <Image
-        src={src || fallbackSrc}
+        src={imageSrc}
         alt={alt || "User avatar"}
         fill
         sizes={`${size}px`}
         className="object-cover"
-        onError={(e) => {
-          e.currentTarget.src = fallbackSrc; // fallback on error
-        }}
+        onError={() => setFailedSrc(src || fallbackSrc)}
       />
     </div>
   );

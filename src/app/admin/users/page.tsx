@@ -10,6 +10,7 @@ import ConfirmationModal from "@/components/common/ConfirmationModal";
 import DashboardLoading from "@/components/dashboard/DashboardLoading";
 import ErrorState from "@/components/common/ErrorState";
 import toast from "react-hot-toast";
+import EmptyState from "@/components/common/EmptyState";
 import { setUsersCache, clearUsersCache } from "@/lib/cache/usersCache";
 
 const BASE_URL = "https://tenanttrust.appistansoft.com";
@@ -207,7 +208,18 @@ export default function UsersPage() {
     return <ErrorState onRetry={() => window.location.reload()} />;
   }
 
-return (
+  if (!filteredUsers || filteredUsers.length === 0) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <EmptyState
+          image="/logos/no-data-image.svg"
+          title={search ? "No users match your search" : "No users available"}
+        />
+      </div>
+    );
+  }
+
+  return (
     <div className="min-h-screen bg-[#F5F6FA] pt-2 pr-6">
       <PageHeader title="Users List" />
 
@@ -240,9 +252,9 @@ return (
                 <tr>
                   <td
                     colSpan={userColumns.length}
-                    className="px-6 py-14 text-center"
+                    className="py-12 text-center text-gray-500"
                   >
-                    <div className="space-y-1"><p className="text-[18px] font-semibold text-[#444444]">{search.trim() ? `No users found for "${search.trim()}"` : "No users found"}</p><p className="text-sm text-gray-400">Try a different keyword or clear the search.</p></div>
+                    {search ? "No users match your search" : "No users found"}
                   </td>
                 </tr>
               )}

@@ -7,6 +7,21 @@ import { isAuthenticated } from "@/lib/auth";
 import { Menu, X } from "lucide-react"; // ← for hamburger & close icons
 import DashboardLoading from "@/components/dashboard/DashboardLoading";
 
+const ADMIN_PREFETCH_ROUTES = [
+  "/admin/dashboard",
+  "/admin/users",
+  "/admin/tenants-listing",
+  "/admin/landlords-listing",
+  "/admin/properties-listing",
+  "/admin/managers",
+  "/admin/amenities-listing",
+  "/admin/properties-requests",
+  "/admin/news-blogs",
+  "/admin/tem-version-controle",
+  "/admin/help-requests",
+  "/admin/change-password",
+];
+
 export default function AdminLayout({
   children,
 }: {
@@ -26,6 +41,12 @@ export default function AdminLayout({
     queueMicrotask(() => {
       setReady(true);
     });
+
+    if (auth) {
+      ADMIN_PREFETCH_ROUTES.forEach((href) => {
+        router.prefetch(href);
+      });
+    }
   }, [router]);
 
   if (!ready) {

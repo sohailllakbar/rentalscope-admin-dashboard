@@ -3,12 +3,15 @@
 
 import { nunito } from "@/lib/fonts";
 import Image from "next/image";
+import { useState } from "react";
 import listicon from "@/assets/icons/help-request/request-list-icon.svg";
+import placeholderImage from "@/assets/icons/common/placeholder-image.jpg";
 
 interface Request {
   id: number;
   name: string;
   email: string;
+  subject: string;
   status: "Unread" | "Read";
   avatar: string;
 }
@@ -17,6 +20,33 @@ interface HelpRequestListProps {
   requests: Request[];
   onSelect: (id: number) => void;
   selectedId?: number;
+}
+
+function RequestAvatar({
+  src,
+  alt,
+  priority,
+}: {
+  src: string;
+  alt: string;
+  priority: boolean;
+}) {
+  const fallbackSrc = placeholderImage.src;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const imageSrc = src && src !== failedSrc ? src : fallbackSrc;
+
+  return (
+    <Image
+      src={imageSrc}
+      alt={alt}
+      width={64}
+      height={64}
+      quality={100}
+      priority={priority}
+      className="rounded-full border border-gray-200 object-cover"
+      onError={() => setFailedSrc(src || fallbackSrc)}
+    />
+  );
 }
 
 export default function HelpRequestList({
@@ -28,7 +58,7 @@ export default function HelpRequestList({
     <div className={` ${nunito.className} overflow-hidden`}>
       {requests.map((request, idx) => (
         <div
-          key={request.id}
+          key={`${request.id}-${request.email}-${request.subject}-${idx}`}
           onClick={() => onSelect(request.id)}
           className={`mx-2 my-4 flex cursor-pointer items-center justify-between gap-4 rounded-[5px] bg-[#FFFFFF] px-4 py-4 shadow-[0_4px_20px_rgba(0,0,0,0.15)] transition-all duration-300 ease-out hover:translate-y-px hover:shadow-[0_8px_30px_rgba(0,0,0,0.18)] ${
             selectedId === request.id
@@ -38,14 +68,10 @@ export default function HelpRequestList({
         >
           {/* Avatar on left */}
           <div className="shrink-0">
-            <Image
+            <RequestAvatar
               src={request.avatar}
               alt={request.name}
-              width={64}
-              height={64}
-              quality={100}
-              priority={idx < 4} // faster load for first few visible items
-              className="rounded-full border border-gray-200 object-cover"
+              priority={idx < 4}
             />
           </div>
 
@@ -71,7 +97,7 @@ export default function HelpRequestList({
               alt="Status icon"
               width={12}
               height={12}
-              className="object-contain"
+              className="h-3 w-3 object-contain"
             />
           </div>
         </div>

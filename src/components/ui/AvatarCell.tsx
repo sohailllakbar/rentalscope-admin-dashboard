@@ -2,6 +2,8 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
+import placeholderImage from "@/assets/icons/common/placeholder-image.jpg";
 
 type AvatarCellProps = {
   src?: string | null;
@@ -16,8 +18,9 @@ export default function AvatarCell({
   size = 72,
   className = "",
 }: AvatarCellProps) {
-  const fallbackSrc =
-    "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNFNUU3RUIiLz4KPHBhdGggZD0iTTEzIDEzQzEzIDEwLjIzOTIgMTUuMjM5MiA4IDE5IDhIMjFDMjQuNzYwOCA4IDI4IDEwLjIzOTIgMjggMTNDMjggMTUuNzYwOCAyNC43NjA4IDE4IDIxIDE4SDE5QzE1LjIzOTIgMTggMTMgMTUuNzYwOCAxMyAxM1oiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTE5IDIyQzE1LjY4NjMgMjIgMTMgMjQuNjg2MyAxMyAyOFYyOEMxMyAzMS4zMTM3IDE1LjY4NjMgMzQgMTkgMzRIMjFDMjQuMzEzNyAzNCAyNyAzMS4zMTM3IDI3IDI4VjI4QzI3IDI0LjY4NjMgMjQuMzEzNyAyMiAyMSAyMkgxOVoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+";
+  const fallbackSrc = placeholderImage.src;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const imageSrc = src && src !== failedSrc ? src : fallbackSrc;
 
   return (
     <div
@@ -25,11 +28,12 @@ export default function AvatarCell({
       style={{ width: size, height: size }}   // ✅ FIX
     >
       <Image
-        src={src ?? fallbackSrc}
+        src={imageSrc}
         alt={alt}
         fill
         sizes={`${size}px`}
         className="object-cover"
+        onError={() => setFailedSrc(src ?? fallbackSrc)}
       />
     </div>
   );

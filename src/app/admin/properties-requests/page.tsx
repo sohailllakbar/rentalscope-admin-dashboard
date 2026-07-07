@@ -176,14 +176,12 @@ export default function PropertiesRequestsPage() {
     try {
       setConfirmLoading(true);
 
-      const endpoint =
-        actionType === "approve"
-          ? "/api/bookings/booking/requests/approve"
-          : "/api/bookings/booking/requests/decline";
-
-      await apiRequest(endpoint, {
-        method: "PATCH",
-        body: JSON.stringify({ requestId: selectedRequestId }),
+      await apiRequest("/api/bookings/booking-request/update", {
+        method: "PUT",
+        body: JSON.stringify({
+          requestId: selectedRequestId,
+          requestStatus: actionType === "approve" ? "Approved" : "Rejected",
+        }),
       });
 
       toast.success(

@@ -22,6 +22,11 @@ export function getUsersCache(key: string): User[] | null {
 }
 
 export function setUsersCache(key: string, data: User[]) {
+  if (data.length === 0) {
+    usersCache.delete(key);
+    return;
+  }
+
   usersCache.set(key, {
     data,
     timestamp: Date.now(),

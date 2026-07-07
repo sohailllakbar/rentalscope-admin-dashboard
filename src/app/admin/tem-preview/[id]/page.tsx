@@ -36,15 +36,42 @@ interface BlogDetail {
   media: MediaItem[];
 }
 
+const BASE_URL = "https://tenanttrust.appistansoft.com";
+
+function normalizeMediaUrl(url: string, type: "image" | "video") {
+  if (!url) return "";
+
+  if (url.startsWith("https://tenanttrust.appistansoft.com")) return url;
+
+  if (url.startsWith("http://tenanttrust.appistansoft.com")) {
+    return url.replace("http://", "https://");
+  }
+
+  if (url.startsWith("http")) return url;
+
+  const cleanUrl = url.startsWith("/") ? url : `/${url}`;
+
+  if (type === "video" && !cleanUrl.includes("/uploads/videos/")) {
+    return `${BASE_URL}/uploads/videos/${cleanUrl.replace(/^\/?(uploads\/videos\/)?/, "")}`;
+  }
+
+  return `${BASE_URL}${cleanUrl}`;
+}
+
 // ✅ MEDIA PARSER
 function parseMedia(input: string | string[] | null | undefined): string[] {
   if (!input) return [];
 
   if (typeof input === "string") {
     try {
-      return JSON.parse(input);
-    } catch {
+      const parsed = JSON.parse(input);
+
+      if (Array.isArray(parsed)) return parsed;
+      if (typeof parsed === "string" && parsed.trim()) return [parsed.trim()];
+
       return [];
+    } catch {
+      return input.split(",").map((item) => item.trim()).filter(Boolean);
     }
   }
 
@@ -74,11 +101,8 @@ export default function BlogDetailPage() {
   useEffect(() => {
     const fetchBlog = async () => {
       try {
-        const res = await apiRequest("/api/blogs/blog/all");
-
-        const blogData = res.data.find(
-          (b: BlogApi) => b.id === Number(id)
-        );
+        const res = await apiRequest(`/api/blogs/blog/${id}`);
+        const blogData: BlogApi | undefined = res.data;
 
         if (!blogData) {
           toast.error("Blog not found");
@@ -92,11 +116,11 @@ export default function BlogDetailPage() {
         const media: MediaItem[] = [
           ...images.map((img) => ({
             type: "image" as const,
-            url: img,
+            url: normalizeMediaUrl(img, "image"),
           })),
           ...videos.map((vid) => ({
             type: "video" as const,
-            url: vid,
+            url: normalizeMediaUrl(vid, "video"),
           })),
         ];
 

@@ -142,6 +142,7 @@ export default function Sidebar({
             alt="Tenant Trust"
             fill
             priority
+            sizes="208px"
             className="object-contain"
           />
         </div>

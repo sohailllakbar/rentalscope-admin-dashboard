@@ -5,14 +5,24 @@ import SplashScreen from "./SplashScreen";
 
 export default function InitialLoader() {
   const [visible, setVisible] = useState(true);
+  const [mounted, setMounted] = useState(true);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const hideTimer = setTimeout(() => {
       setVisible(false);
-    }, 1800);
+    }, 450);
 
-    return () => clearTimeout(timer);
+    const unmountTimer = setTimeout(() => {
+      setMounted(false);
+    }, 1100);
+
+    return () => {
+      clearTimeout(hideTimer);
+      clearTimeout(unmountTimer);
+    };
   }, []);
+
+  if (!mounted) return null;
 
   return <SplashScreen visible={visible} />;
 }

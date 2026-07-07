@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import PageHeader from "@/components/common/PageHeader";
 import NewsBlogForm from "@/components/common/news-blog/NewsBlogForm";
 import { apiRequest } from "@/lib/apiHelper/api";
+import { clearBlogCache } from "@/lib/cache/blogCache";
 import toast from "react-hot-toast";
 
 export default function AddNewsBlogPage() {
@@ -17,6 +18,7 @@ export default function AddNewsBlogPage() {
       });
 
       if (response.success) {
+        clearBlogCache();
         toast.success("Blog created successfully");
 
         // redirect back to blog list
@@ -43,7 +45,11 @@ export default function AddNewsBlogPage() {
           </h2>
         </div>
 
-        <NewsBlogForm onSubmit={handleCreate} />
+        <NewsBlogForm
+          onSubmit={handleCreate}
+          submitLabel="Create"
+          submittingLabel="Creating..."
+        />
       </div>
     </div>
   );

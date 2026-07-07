@@ -2,18 +2,13 @@
 
 export type ApiHelpRequest = {
   id: number;
-  requester?: {
-    name?: string;
-    email?: string;
-    imageProfile?: string | null;
-  };
+  requester?: { name?: string; imageProfile?: string | null };
   name?: string;
   firstName?: string;
   email?: string;
   subject?: string;
   feedback?: string;
-  message?: string;
-  status?: "Unread" | "Read" | string;
+  status: "Unread" | "Read";
   reply?: string | null;
   imageProfile?: string | null;
 };

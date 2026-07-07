@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { nunito } from "@/lib/fonts";
 import Image from "next/image";
+import placeholderImage from "@/assets/icons/common/placeholder-image.jpg";
 
 interface RequestDetails {
   id: number;
@@ -26,14 +27,19 @@ export default function HelpRequestDetails({
 }: HelpRequestDetailsProps) {
   const [reply, setReply] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const fallbackSrc = placeholderImage.src;
+  const [avatarSrc, setAvatarSrc] = useState(details.avatar || fallbackSrc);
+
+  useEffect(() => {
+    setAvatarSrc(details.avatar || fallbackSrc);
+  }, [details.avatar, fallbackSrc]);
 
   const handleSubmit = async () => {
-    const trimmedReply = reply.trim();
-    if (!trimmedReply) return;
+    if (!reply.trim()) return;
 
     try {
       setIsSending(true);
-      await onSendReply(trimmedReply);
+      await onSendReply(reply);
       setReply("");
     } finally {
       setIsSending(false);
@@ -102,11 +108,12 @@ export default function HelpRequestDetails({
         {/* Avatar */}
         <div className="absolute top-4 right-4 sm:top-4 sm:right-4">
           <Image
-            src={details.avatar}
+            src={avatarSrc}
             alt={details.name}
             width={100}
             height={100}
             className="sm:w-30 sm:h-30 rounded-full border border-gray-200 object-cover"
+            onError={() => setAvatarSrc(fallbackSrc)}
           />
         </div>
       </div>

@@ -14,7 +14,7 @@ import DashboardLoading from "@/components/dashboard/DashboardLoading";
 import { apiRequest } from "@/lib/apiHelper/api";
 import toast from "react-hot-toast";
 
-// âœ… TYPES + CACHE
+// ✅ TYPES + CACHE
 import { Blog, BlogAPI } from "@/types/blog";
 import {
   getBlogCache,
@@ -24,59 +24,34 @@ import {
 
 const BASE_URL = "https://tenanttrust.appistansoft.com";
 
-function normalizeBlogImageUrl(image: string) {
-  const trimmed = image.trim();
+function getFirstImage(images: string | string[] | null): string | null {
+  if (!images) return null;
 
-  if (!trimmed) return null;
-  if (/\.(mp4|mov|webm|avi|mkv)$/i.test(trimmed)) return null;
-  if (trimmed.startsWith("http")) return trimmed;
-  if (trimmed.startsWith("/uploads/")) return `${BASE_URL}${trimmed}`;
-  if (trimmed.startsWith("uploads/")) return `${BASE_URL}/${trimmed}`;
-  if (trimmed.startsWith("/")) return `${BASE_URL}${trimmed}`;
+  let parsed: unknown = images;
 
-  return `${BASE_URL}/uploads/${trimmed}`;
-}
-
-function parseBlogMedia(value: string | string[] | null | undefined): string[] {
-  if (!value) return [];
-
-  if (Array.isArray(value)) {
-    return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
-  }
-
-  if (typeof value !== "string") return [];
-
-  const trimmed = value.trim();
-  if (!trimmed) return [];
-
-  try {
-    const parsed = JSON.parse(trimmed);
-
-    if (Array.isArray(parsed)) {
-      return parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  if (typeof images === "string") {
+    try {
+      parsed = JSON.parse(images);
+    } catch {
+      parsed = images.split(",").map((img) => img.trim()).filter(Boolean);
     }
-
-    if (typeof parsed === "string") {
-      return parseBlogMedia(parsed);
-    }
-  } catch {
-    return trimmed
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
   }
 
-  return [];
-}
+  if (!Array.isArray(parsed)) return null;
 
-function getFirstImage(images: string | string[] | null | undefined): string | null {
-  for (const image of parseBlogMedia(images)) {
-    const normalized = normalizeBlogImageUrl(image);
-    if (normalized) return normalized;
+  const first = parsed[0];
+
+  if (typeof first !== "string" || !first) {
+    return null;
   }
 
-  return null;
+  if (first.startsWith("http")) return first;
+
+  const normalized = first.startsWith("/") ? first : `/${first}`;
+
+  return `${BASE_URL}${normalized}`;
 }
+
 export default function NewsBlogsPage() {
   const router = useRouter();
 
@@ -125,10 +100,10 @@ export default function NewsBlogsPage() {
 
         const formatted: Blog[] = result.data.map((blog: BlogAPI) => ({
           id: blog.id,
-          title: blog.title || "", // âœ… FIX
-          description: blog.description || "", // âœ… FIX
+          title: blog.title || "", // ✅ FIX
+          description: blog.description || "", // ✅ FIX
           image: getFirstImage(blog.images),
-          date: blog.date || "", // âœ… FIX
+          date: blog.date || "", // ✅ FIX
           createdAt: blog.createdAt,
           updatedAt: blog.updatedAt,
         }));
@@ -165,7 +140,7 @@ export default function NewsBlogsPage() {
 
     return blogs.filter((b) =>
       [b.title, b.description, b.date]
-        .filter(Boolean) // âœ… remove undefined/null
+        .filter(Boolean) // ✅ remove undefined/null
         .join(" ")
         .toLowerCase()
         .includes(term),

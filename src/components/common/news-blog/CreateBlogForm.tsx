@@ -2,6 +2,7 @@
 
 import NewsBlogForm from "./NewsBlogForm";
 import { apiRequest } from "@/lib/apiHelper/api";
+import { clearBlogCache } from "@/lib/cache/blogCache";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 
@@ -16,6 +17,7 @@ export default function CreateBlogForm() {
       });
 
       if (res.success) {
+        clearBlogCache();
         toast.success("Blog created successfully");
         router.push("/admin/news-blogs");
       } else {
@@ -26,5 +28,11 @@ export default function CreateBlogForm() {
     }
   };
 
-  return <NewsBlogForm onSubmit={handleCreate} />;
+  return (
+    <NewsBlogForm
+      onSubmit={handleCreate}
+      submitLabel="Create"
+      submittingLabel="Creating..."
+    />
+  );
 }

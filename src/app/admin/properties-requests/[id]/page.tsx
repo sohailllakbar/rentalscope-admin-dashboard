@@ -148,9 +148,12 @@ export default function PropertyDetailPage() {
 
   const handleApproveClick = async () => {
     try {
-      await apiRequest("/api/bookings/booking/requests/approve", {
-        method: "PATCH",
-        body: JSON.stringify({ requestId: Number(id) }),
+      await apiRequest("/api/bookings/booking-request/update", {
+        method: "PUT",
+        body: JSON.stringify({
+          requestId: Number(id),
+          requestStatus: "Approved",
+        }),
       });
 
       toast.success("Booking request approved successfully");
