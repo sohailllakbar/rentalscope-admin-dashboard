@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import toast from "react-hot-toast";
 
 import PageHeader from "@/components/common/PageHeader";
 import AddAndFilterControls from "@/components/common/Management Managers/AddAndFilterControls";
@@ -14,9 +15,13 @@ import ErrorState from "@/components/common/ErrorState";
 import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/apiHelper/api";
 
-// ✅ TYPES + CACHE
+// TYPES + CACHE
 import { Version, ApiVersion, Platform } from "@/types/version";
-import { getVersionCache, setVersionCache } from "@/lib/cache/versionCache";
+import {
+  clearVersionCache,
+  getVersionCache,
+  setVersionCache,
+} from "@/lib/cache/versionCache";
 
 export default function VersionControlPage() {
   const router = useRouter();
@@ -39,7 +44,7 @@ export default function VersionControlPage() {
   const formatVersions = (versions: ApiVersion[]): Version[] =>
     versions.map((v) => ({
       id: v.id,
-      versionNumber: `Version ${v.versionNumber}`,
+      versionNumber: String(v.versionNumber),
       description: v.description,
       releaseDate: new Date(v.releaseDate).toLocaleDateString(),
       status: v.status,
@@ -136,6 +141,26 @@ export default function VersionControlPage() {
     router.push(`/admin/version-control/edit/${id}`);
   };
 
+  const handleStatusChange = async (
+    versionId: string | number,
+    status: string,
+  ) => {
+    const res = await apiRequest(`/api/version/version/status/${versionId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+
+    setVersions((prev) =>
+      prev.map((version) =>
+        version.id === Number(versionId) || version.id === versionId
+          ? { ...version, status: res.data?.status ?? status }
+          : version,
+      ),
+    );
+    clearVersionCache();
+    toast.success(res.message || "Version status updated successfully");
+  };
+
   /* ================================
       STATES
   ================================= */
@@ -181,6 +206,7 @@ export default function VersionControlPage() {
                     version={version}
                     index={index}
                     onEdit={handleEdit}
+                    onStatusChange={handleStatusChange}
                   />
                 ))
               ) : (

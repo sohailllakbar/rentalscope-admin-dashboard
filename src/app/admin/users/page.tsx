@@ -9,16 +9,8 @@ import Pagination from "@/components/table/Pagination";
 import ConfirmationModal from "@/components/common/ConfirmationModal";
 import DashboardLoading from "@/components/dashboard/DashboardLoading";
 import ErrorState from "@/components/common/ErrorState";
-import { apiRequest } from "@/lib/apiHelper/api";
 import toast from "react-hot-toast";
-import EmptyState from "@/components/common/EmptyState";
-
-// ✅ IMPORT CACHE
-import {
-  getUsersCache,
-  setUsersCache,
-  clearUsersCache,
-} from "@/lib/cache/usersCache";
+import { setUsersCache, clearUsersCache } from "@/lib/cache/usersCache";
 
 const BASE_URL = "https://tenanttrust.appistansoft.com";
 
@@ -61,13 +53,6 @@ export default function UsersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
-
-  /* ================================
-      DEBOUNCE SEARCH
-  ================================= */
-
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
@@ -77,48 +62,52 @@ export default function UsersPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  /* ================================
-      FETCH USERS (WITH CACHE)
-  ================================= */
-
   useEffect(() => {
     let isMounted = true;
-
-    const key = `users-${currentPage}-${entries}-${debouncedSearch}`;
-
-    const cached = getUsersCache(key);
-
-    // ✅ Show cache instantly
-    if (cached) {
-      setUsers(cached);
-      setLoading(false);
-    }
+    clearUsersCache();
 
     const fetchUsers = async () => {
       try {
-        const json = await apiRequest("/api/admin/users");
+        setLoading(true);
+        setError(null);
 
-        if (!json.success || !Array.isArray(json.data.users)) {
-          throw new Error("Invalid response format");
+        const token = window.localStorage.getItem("auth_token");
+        const response = await fetch(`${BASE_URL}/api/admin/users`, {
+          cache: "no-store",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const json = await response.json();
+
+        if (!response.ok || !json.success) {
+          throw new Error(json.message || `Error ${response.status}`);
         }
 
-        const formattedUsers: User[] = json.data.users.map((u: ApiUser) => ({
+        const apiUsers = Array.isArray(json.data?.users)
+          ? json.data.users
+          : Array.isArray(json.users)
+            ? json.users
+            : Array.isArray(json.data)
+              ? json.data
+              : [];
+
+        const formattedUsers: User[] = apiUsers.map((u: ApiUser) => ({
           ...u,
           image: u.image?.startsWith("http")
             ? u.image
-            : `${BASE_URL}/${u.image}`,
-          gender: u.gender || "—",
-          address: u.address || "—",
+            : u.image
+              ? `${BASE_URL}/${u.image}`
+              : "",
+          gender: u.gender || "-",
+          address: u.address || "-",
           status: u.status || "Active",
         }));
 
         if (isMounted) {
-// ✅ FORCE EMPTY
- setUsers([]); 
-   setUsersCache(key, formattedUsers); // ✅ cache set
+          setUsers(formattedUsers);
+          setUsersCache("users-list", formattedUsers);
         }
       } catch (err) {
-        if (!cached && isMounted) {
+        if (isMounted) {
           setError(err instanceof Error ? err.message : "Failed to load users");
         }
       } finally {
@@ -131,11 +120,7 @@ export default function UsersPage() {
     return () => {
       isMounted = false;
     };
-  }, [currentPage, entries, debouncedSearch, token]);
-
-  /* ================================
-      SEARCH FILTER
-  ================================= */
+  }, []);
 
   const filteredUsers = useMemo(() => {
     if (!debouncedSearch.trim()) return users;
@@ -157,21 +142,16 @@ export default function UsersPage() {
     currentPage * entries,
   );
 
-  /* ================================
-      BLOCK CLICK
-  ================================= */
-
   const handleBlockClick = (user: User) => {
     setSelectedUser(user);
     setIsModalOpen(true);
   };
 
-  /* ================================
-      CONFIRM BLOCK
-  ================================= */
-
   const handleConfirmBlock = async () => {
-    if (!selectedUser || !token) return;
+    if (!selectedUser) return;
+
+    const token = window.localStorage.getItem("auth_token");
+    if (!token) return;
 
     try {
       setConfirmLoading(true);
@@ -203,7 +183,7 @@ export default function UsersPage() {
         ),
       );
 
-      clearUsersCache(); // ✅ invalidate cache
+      clearUsersCache();
 
       toast.success(result.message);
     } catch (err) {
@@ -215,10 +195,6 @@ export default function UsersPage() {
     }
   };
 
-  /* ================================
-      LOADING
-  ================================= */
-
   if (loading) {
     return (
       <div className="flex min-h-[80vh] items-center justify-center px-4 py-12">
@@ -228,32 +204,10 @@ export default function UsersPage() {
   }
 
   if (error) {
-    return (
-      <ErrorState onRetry={() => window.location.reload()} />
-    );
+    return <ErrorState onRetry={() => window.location.reload()} />;
   }
 
-  // ✅ EMPTY STATE (GLOBAL)
-if (!filteredUsers || filteredUsers.length === 0) {
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <EmptyState
-        image="/logos/no-data-image.svg"
-        title={
-          search
-            ? "No users match your search"
-            : "No users available"
-        }
-      />
-    </div>
-  );
-}
-
-  /* ================================
-      UI (UNCHANGED)
-  ================================= */
-
-  return (
+return (
     <div className="min-h-screen bg-[#F5F6FA] pt-2 pr-6">
       <PageHeader title="Users List" />
 
@@ -286,9 +240,9 @@ if (!filteredUsers || filteredUsers.length === 0) {
                 <tr>
                   <td
                     colSpan={userColumns.length}
-                    className="py-12 text-center text-gray-500"
+                    className="px-6 py-14 text-center"
                   >
-                    {search ? "No users match your search" : "No users found"}
+                    <div className="space-y-1"><p className="text-[18px] font-semibold text-[#444444]">{search.trim() ? `No users found for "${search.trim()}"` : "No users found"}</p><p className="text-sm text-gray-400">Try a different keyword or clear the search.</p></div>
                   </td>
                 </tr>
               )}

@@ -9,15 +9,12 @@ import PropertyInfoBoxx from "@/components/common/propertyInfoBoxx";
 import PropertyMediaGrid from "@/components/common/PropertyMediaGrid";
 import DashboardLoading from "@/components/dashboard/DashboardLoading";
 import ConfirmationModal from "@/components/common/ConfirmationModal";
+import placeholderImage from "@/assets/icons/common/placeholder-image.jpg";
 
 import toast from "react-hot-toast";
 import { apiRequest } from "@/lib/apiHelper/api";
 
 const BASE_URL = "https://tenanttrust.appistansoft.com";
-
-/* -----------------------------
-   Types
---------------------------------*/
 
 type MediaItem = {
   type: "image" | "video";
@@ -38,7 +35,7 @@ interface PropertyDetail {
   rentDeadline: string;
   description: string;
   amenities: string | string[];
-  images: string;
+  images: string | string[] | null;
   landlord?: {
     name: string;
   };
@@ -49,20 +46,24 @@ interface PendingRequest {
   property: PropertyDetail;
 }
 
-/* -----------------------------
-   Helpers
---------------------------------*/
+function parseImages(images: string | string[] | null | undefined): string[] {
+  if (!images) return [];
+  if (Array.isArray(images)) return images;
 
-function parseImages(images: string): string[] {
   try {
     const parsed = JSON.parse(images || "[]");
 
     if (Array.isArray(parsed)) return parsed;
+    if (typeof parsed === "string") {
+      const nested = JSON.parse(parsed);
+      return Array.isArray(nested) ? nested : [];
+    }
+  } catch {}
 
-    return JSON.parse(parsed);
-  } catch {
-    return [];
-  }
+  return images
+    .split(",")
+    .map((image) => image.trim())
+    .filter(Boolean);
 }
 
 function parseAmenities(amenities: string | string[]): string[] {
@@ -90,7 +91,22 @@ function parseAmenities(amenities: string | string[]): string[] {
   return [];
 }
 
-/* -------------------------------- */
+function isVideo(file: string) {
+  return file.split("?")[0].toLowerCase().endsWith(".mp4");
+}
+
+function normalizeMediaUrl(file: string, type: "image" | "video") {
+  if (file.startsWith("http://") || file.startsWith("https://")) return file;
+
+  const cleanFile = file.replace(/^\/+/, "");
+  if (cleanFile.startsWith("uploads/")) return `${BASE_URL}/${cleanFile}`;
+
+  if (type === "video") {
+    return `${BASE_URL}/uploads/videos/${cleanFile.replace(/^videos\//, "")}`;
+  }
+
+  return `${BASE_URL}/uploads/${cleanFile}`;
+}
 
 export default function PropertyDetailPage() {
   const params = useParams<{ id: string }>();
@@ -102,10 +118,6 @@ export default function PropertyDetailPage() {
   const [loading, setLoading] = useState(true);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  /* -----------------------------
-     Delete Property
-  --------------------------------*/
 
   const handleDeleteClick = () => {
     setIsModalOpen(true);
@@ -134,10 +146,6 @@ export default function PropertyDetailPage() {
     }
   };
 
-  /* -----------------------------
-     Approve Request
-  --------------------------------*/
-
   const handleApproveClick = async () => {
     try {
       await apiRequest("/api/bookings/booking/requests/approve", {
@@ -154,10 +162,6 @@ export default function PropertyDetailPage() {
       );
     }
   };
-
-  /* -----------------------------
-     Fetch Property
-  --------------------------------*/
 
   useEffect(() => {
     const fetchProperty = async () => {
@@ -184,10 +188,6 @@ export default function PropertyDetailPage() {
     fetchProperty();
   }, [id]);
 
-  /* -----------------------------
-     Loading UI
-  --------------------------------*/
-
   if (loading) {
     return (
       <div className="flex min-h-[80vh] items-center justify-center">
@@ -200,24 +200,22 @@ export default function PropertyDetailPage() {
     return <div className="p-10 text-center">Property not found</div>;
   }
 
-  /* -----------------------------
-     Fix backend data
-  --------------------------------*/
-
   const images = parseImages(property.images);
   const amenities = parseAmenities(property.amenities);
+  const firstImage = images.find((file) => !isVideo(file));
 
-  const mainImage =
-    images.length && !images[0].endsWith(".mp4")
-      ? `${BASE_URL}/uploads/${images[0]}`
-      : "";
+  const mainImage = firstImage
+    ? normalizeMediaUrl(firstImage, "image")
+    : placeholderImage.src;
 
-  const media: MediaItem[] = images.map((file) => ({
-    type: file.endsWith(".mp4") ? "video" : "image",
-    url: `${BASE_URL}/uploads/${file}`,
-  }));
+  const media: MediaItem[] = images.map((file) => {
+    const type = isVideo(file) ? "video" : "image";
 
-  /* -------------------------------- */
+    return {
+      type,
+      url: normalizeMediaUrl(file, type),
+    };
+  });
 
   return (
     <div className="min-h-screen bg-[#F5F6FA] p-6 md:p-8 lg:p-6">

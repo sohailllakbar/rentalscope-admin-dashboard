@@ -253,11 +253,9 @@ export default function TenantsListingPage() {
                 <tr>
                   <td
                     colSpan={tenantColumns.length}
-                    className="py-12 text-center text-gray-500"
+                    className="px-6 py-14 text-center"
                   >
-                    {search
-                      ? "No matching active tenants"
-                      : "No active tenants found"}
+                    <div className="space-y-1"><p className="text-[18px] font-semibold text-[#444444]">{search.trim() ? `No tenants found for "${search.trim()}"` : "No active tenants found"}</p><p className="text-sm text-gray-400">Try a different keyword or clear the search.</p></div>
                   </td>
                 </tr>
               )}

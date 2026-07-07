@@ -17,7 +17,7 @@ interface RequestDetails {
 
 interface HelpRequestDetailsProps {
   details: RequestDetails;
-  onSendReply: (reply: string) => void;
+  onSendReply: (reply: string) => Promise<void>;
 }
 
 export default function HelpRequestDetails({
@@ -27,17 +27,17 @@ export default function HelpRequestDetails({
   const [reply, setReply] = useState("");
   const [isSending, setIsSending] = useState(false);
 
-  const handleSubmit = () => {
-    if (!reply.trim()) return;
+  const handleSubmit = async () => {
+    const trimmedReply = reply.trim();
+    if (!trimmedReply) return;
 
-    setIsSending(true);
-
-    // simulate API (replace later)
-    setTimeout(() => {
-      onSendReply(reply);
+    try {
+      setIsSending(true);
+      await onSendReply(trimmedReply);
       setReply("");
+    } finally {
       setIsSending(false);
-    }, 800);
+    }
   };
 
   return (

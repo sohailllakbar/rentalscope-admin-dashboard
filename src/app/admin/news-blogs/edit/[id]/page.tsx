@@ -25,15 +25,29 @@ interface BlogFormData {
 function parseMedia(input: string | string[] | null | undefined): string[] {
   if (!input) return [];
 
-  if (typeof input === "string") {
-    try {
-      return JSON.parse(input);
-    } catch {
-      return [];
-    }
+  if (Array.isArray(input)) {
+    return input.map((item) => String(item).trim()).filter(Boolean);
   }
 
-  return input;
+  const trimmedInput = input.trim();
+  if (!trimmedInput) return [];
+
+  try {
+    const parsed = JSON.parse(trimmedInput);
+
+    if (Array.isArray(parsed)) {
+      return parsed.map((item) => String(item).trim()).filter(Boolean);
+    }
+
+    if (typeof parsed === "string") {
+      return [parsed.trim()].filter(Boolean);
+    }
+  } catch {}
+
+  return trimmedInput
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 export default function EditNewsBlogPage() {

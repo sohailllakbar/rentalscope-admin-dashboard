@@ -3,22 +3,39 @@
 import Image from "next/image";
 import { nunito } from "@/lib/fonts";
 import ActionButton from "@/components/common/news-blog/ActionButton";
+import placeholderImage from "@/assets/icons/common/placeholder-image.jpg";
 
 const BASE_URL = "https://tenanttrust.appistansoft.com";
 
-/* -----------------------------
-   Helper: Parse Images (same as detail page)
---------------------------------*/
-function parseImages(images: string): string[] {
+function parseImages(images: string | string[] | null | undefined): string[] {
+  if (!images) return [];
+  if (Array.isArray(images)) return images;
+
   try {
     const parsed = JSON.parse(images || "[]");
 
     if (Array.isArray(parsed)) return parsed;
+    if (typeof parsed === "string") {
+      const nested = JSON.parse(parsed);
+      return Array.isArray(nested) ? nested : [];
+    }
+  } catch {}
 
-    return JSON.parse(parsed);
-  } catch {
-    return [];
-  }
+  return images
+    .split(",")
+    .map((image) => image.trim())
+    .filter(Boolean);
+}
+
+function isVideo(file: string) {
+  return file.split("?")[0].toLowerCase().endsWith(".mp4");
+}
+
+function getImageUrl(file: string | null) {
+  if (!file || isVideo(file)) return placeholderImage.src;
+  if (file.startsWith("http://") || file.startsWith("https://")) return file;
+
+  return `${BASE_URL}/uploads/${file.replace(/^\/+/, "").replace(/^uploads\//, "")}`;
 }
 
 interface PropertyRequest {
@@ -28,7 +45,7 @@ interface PropertyRequest {
     title: string;
     description: string;
     saleOrRent: string;
-    images: string;
+    images: string | string[] | null;
   };
   name: string;
   description: string;
@@ -53,19 +70,9 @@ export default function PropertiesRequestsTableRow({
   const isEven = index % 2 === 0;
   const bgColor = isEven ? "bg-[#F2F2F2]" : "bg-white";
 
-  /* -----------------------------
-     FIX IMAGE LOGIC ONLY
-  --------------------------------*/
-  const images = request.property?.images
-    ? parseImages(request.property.images)
-    : [];
-
-  const firstImage = images.length ? images[0] : null;
-
-  const imageUrl =
-    firstImage && !firstImage.endsWith(".mp4")
-      ? `${BASE_URL}/uploads/${firstImage}`
-      : null;
+  const images = parseImages(request.property?.images);
+  const firstImage = images.find((image) => !isVideo(image)) ?? null;
+  const imageUrl = getImageUrl(firstImage);
 
   return (
     <tr
@@ -74,19 +81,13 @@ export default function PropertiesRequestsTableRow({
       {/* Image */}
       <td className="border border-[#4747474D] px-3 py-3 text-center sm:px-4 sm:py-4">
         <div className="relative mx-auto h-12 w-12 overflow-hidden rounded-full border border-gray-200 sm:h-16 sm:w-16">
-  {imageUrl ? (
-    <Image
-      src={imageUrl}
-      alt={request.name}
-      fill
-      className="object-cover"
-      sizes="64px"
-    />
-  ) : (
-            <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
-              No Img
-            </div>
-          )}
+          <Image
+            src={imageUrl}
+            alt={request.name}
+            fill
+            className="object-cover"
+            sizes="64px"
+          />
         </div>
       </td>
 

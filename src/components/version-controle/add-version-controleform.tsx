@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/apiHelper/api";
+import { clearVersionCache } from "@/lib/cache/versionCache";
 import toast from "react-hot-toast";
 
 export default function AddVersionControlPage() {
@@ -37,7 +38,7 @@ export default function AddVersionControlPage() {
     try {
       setLoading(true);
 
-      const result = await apiRequest("/api/version/control/add", {
+      const result = await apiRequest("/api/version/version/control/add", {
         method: "POST",
         body: JSON.stringify({
           deviceType,
@@ -50,6 +51,7 @@ export default function AddVersionControlPage() {
 
       if (result.success) {
         toast.success(result.message || "Version created successfully");
+        clearVersionCache();
 
         setVersionNumber("");
         setReleaseDate("");

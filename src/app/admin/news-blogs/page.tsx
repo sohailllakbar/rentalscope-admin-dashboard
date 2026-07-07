@@ -14,7 +14,7 @@ import DashboardLoading from "@/components/dashboard/DashboardLoading";
 import { apiRequest } from "@/lib/apiHelper/api";
 import toast from "react-hot-toast";
 
-// ✅ TYPES + CACHE
+// âœ… TYPES + CACHE
 import { Blog, BlogAPI } from "@/types/blog";
 import {
   getBlogCache,
@@ -22,30 +22,61 @@ import {
   clearBlogCache,
 } from "@/lib/cache/blogCache";
 
-function getFirstImage(images: string | string[] | null): string | null {
-  if (!images) return null;
+const BASE_URL = "https://tenanttrust.appistansoft.com";
 
-  let parsed: unknown = images;
+function normalizeBlogImageUrl(image: string) {
+  const trimmed = image.trim();
 
-  if (typeof images === "string") {
-    try {
-      parsed = JSON.parse(images);
-    } catch {
-      return null;
-    }
+  if (!trimmed) return null;
+  if (/\.(mp4|mov|webm|avi|mkv)$/i.test(trimmed)) return null;
+  if (trimmed.startsWith("http")) return trimmed;
+  if (trimmed.startsWith("/uploads/")) return `${BASE_URL}${trimmed}`;
+  if (trimmed.startsWith("uploads/")) return `${BASE_URL}/${trimmed}`;
+  if (trimmed.startsWith("/")) return `${BASE_URL}${trimmed}`;
+
+  return `${BASE_URL}/uploads/${trimmed}`;
+}
+
+function parseBlogMedia(value: string | string[] | null | undefined): string[] {
+  if (!value) return [];
+
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
   }
 
-  if (!Array.isArray(parsed)) return null;
+  if (typeof value !== "string") return [];
 
-  const first = parsed[0];
+  const trimmed = value.trim();
+  if (!trimmed) return [];
 
-  if (typeof first === "string" && first.startsWith("http")) {
-    return first;
+  try {
+    const parsed = JSON.parse(trimmed);
+
+    if (Array.isArray(parsed)) {
+      return parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+    }
+
+    if (typeof parsed === "string") {
+      return parseBlogMedia(parsed);
+    }
+  } catch {
+    return trimmed
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+function getFirstImage(images: string | string[] | null | undefined): string | null {
+  for (const image of parseBlogMedia(images)) {
+    const normalized = normalizeBlogImageUrl(image);
+    if (normalized) return normalized;
   }
 
   return null;
 }
-
 export default function NewsBlogsPage() {
   const router = useRouter();
 
@@ -94,10 +125,10 @@ export default function NewsBlogsPage() {
 
         const formatted: Blog[] = result.data.map((blog: BlogAPI) => ({
           id: blog.id,
-          title: blog.title || "", // ✅ FIX
-          description: blog.description || "", // ✅ FIX
+          title: blog.title || "", // âœ… FIX
+          description: blog.description || "", // âœ… FIX
           image: getFirstImage(blog.images),
-          date: blog.date || "", // ✅ FIX
+          date: blog.date || "", // âœ… FIX
           createdAt: blog.createdAt,
           updatedAt: blog.updatedAt,
         }));
@@ -134,7 +165,7 @@ export default function NewsBlogsPage() {
 
     return blogs.filter((b) =>
       [b.title, b.description, b.date]
-        .filter(Boolean) // ✅ remove undefined/null
+        .filter(Boolean) // âœ… remove undefined/null
         .join(" ")
         .toLowerCase()
         .includes(term),

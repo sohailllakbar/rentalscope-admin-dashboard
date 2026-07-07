@@ -11,14 +11,14 @@ export default function DashboardLoading() {
       aria-label="Loading dashboard content"
     >
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
+        initial={{ scale: 0.96, opacity: 0 }}
         animate={{
-          scale: [0.9, 1.5, 0.9],
-          opacity: [0.7, 1, 0.7],
-          y: [0, -8, 0],
+          scale: [0.96, 1.12, 0.96],
+          opacity: [0.82, 1, 0.82],
+          y: [0, -4, 0],
         }}
         transition={{
-          duration: 1.2,
+          duration: 0.72,
           ease: "easeInOut",
           repeat: Infinity,
         }}
@@ -30,6 +30,7 @@ export default function DashboardLoading() {
           width={160}
           height={160}
           priority
+          sizes="160px"
           className="drop-shadow-2xl"
         />
       </motion.div>

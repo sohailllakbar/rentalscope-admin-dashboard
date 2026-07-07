@@ -10,154 +10,163 @@ import toast from "react-hot-toast";
 import DashboardLoading from "@/components/dashboard/DashboardLoading";
 import ErrorState from "@/components/common/ErrorState";
 
-import {
-  Request,
-  RequestDetails,
-  ApiHelpRequest,
-} from "@/types/helpRequest";
+import { Request, RequestDetails, ApiHelpRequest } from "@/types/helpRequest";
 
 import {
   getHelpListCache,
   setHelpListCache,
   getHelpDetailCache,
   setHelpDetailCache,
+  clearHelpCache,
 } from "@/lib/cache/helpRequestCache";
 
+const PLACEHOLDER_AVATAR = "/logos/main-logo-rental-scope.webp";
+const BASE_URL = "https://tenanttrust.appistansoft.com";
+
+function normalizeImageUrl(value?: string | null) {
+  if (!value) return PLACEHOLDER_AVATAR;
+
+  const trimmed = value.trim();
+  if (!trimmed) return PLACEHOLDER_AVATAR;
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("/")) return `${BASE_URL}${trimmed}`;
+
+  return `${BASE_URL}/${trimmed.replace(/^\/+/, "")}`;
+}
+
+function getPayloadArray(payload: unknown): ApiHelpRequest[] {
+  if (Array.isArray(payload)) return payload;
+
+  if (payload && typeof payload === "object") {
+    const data = (payload as { data?: unknown }).data;
+    if (Array.isArray(data)) return data as ApiHelpRequest[];
+    if (data && typeof data === "object") return [data as ApiHelpRequest];
+
+    const contacts = (payload as { contacts?: unknown }).contacts;
+    if (Array.isArray(contacts)) return contacts as ApiHelpRequest[];
+  }
+
+  return [];
+}
+
+function getName(data: ApiHelpRequest) {
+  return (
+    data.requester?.name ||
+    data.name ||
+    data.firstName ||
+    data.email?.split("@")[0] ||
+    "User"
+  );
+}
+
+function formatRequest(data: ApiHelpRequest): Request {
+  return {
+    id: Number(data.id),
+    name: getName(data),
+    email: data.email || data.requester?.email || "N/A",
+    subject: data.subject || "No subject",
+    feedback: data.feedback || data.message || "No message",
+    status: data.status === "Read" ? "Read" : "Unread",
+    reply: data.reply ?? null,
+    avatar: normalizeImageUrl(data.imageProfile || data.requester?.imageProfile),
+  };
+}
+
+function toRequestDetails(request: Request): RequestDetails {
+  return { ...request };
+}
+
 export default function HelpRequestsPage() {
-  /* =========================
-     STATE
-  ========================= */
   const cachedList = getHelpListCache();
 
   const [requests, setRequests] = useState<Request[]>(
-    Array.isArray(cachedList) ? cachedList : []
+    Array.isArray(cachedList) ? cachedList : [],
   );
 
   const [selectedRequest, setSelectedRequest] =
     useState<RequestDetails | null>(null);
 
-  const [loading, setLoading] = useState(!cachedList); // ✅ only if no cache
+  const [loading, setLoading] = useState(!cachedList);
   const [error, setError] = useState<string | null>(null);
 
-  /* =========================
-     SELECT REQUEST
-  ========================= */
-  const handleSelect = useCallback(async (id: number) => {
-    const cached = getHelpDetailCache(id);
+  const handleSelect = useCallback(
+    async (id: number) => {
+      const cached = getHelpDetailCache(id);
 
-    if (cached) {
-      setSelectedRequest(cached);
-    }
-
-    try {
-      const result = await apiRequest(`/api/admin/help-requests/get/${id}`);
-      const data = result.data?.[0];
-      if (!data) return;
-
-      const request: RequestDetails = {
-        id: data.id,
-        name: data.requester?.name || data.firstName || "User",
-        email: data.email || "N/A",
-        subject: data.subject || "No subject",
-        feedback: data.feedback || "No message",
-        status: data.status,
-        reply: data.reply ?? null,
-        avatar: `https://i.pravatar.cc/150?u=${data.id}`,
-      };
-
-      setSelectedRequest(request);
-      setHelpDetailCache(id, request);
-
-      setRequests((prev) =>
-        prev.map((r) =>
-          r.id === id && r.status !== "Read"
-            ? { ...r, status: "Read" }
-            : r
-        )
-      );
-    } catch (err) {
-      if (!cached) {
-        toast.error(
-          err instanceof Error
-            ? err.message
-            : "Failed to fetch request details"
-        );
+      if (cached) {
+        setSelectedRequest(cached);
+        return;
       }
-    }
-  }, []);
 
-  /* =========================
-     SEND REPLY
-  ========================= */
+      const listItem = requests.find((request) => request.id === id);
+      if (listItem) {
+        const details = toRequestDetails(listItem);
+        setSelectedRequest(details);
+        setHelpDetailCache(id, details);
+      }
+    },
+    [requests],
+  );
+
   const handleSendReply = useCallback(
     async (reply: string) => {
       if (!selectedRequest) return;
 
+      const trimmedReply = reply.trim();
+
       try {
-        const result = await apiRequest(
-          `/api/admin/help-requests/reply/${selectedRequest.id}`,
-          {
-            method: "POST",
-            body: JSON.stringify({ reply }),
-          }
-        );
+        const result = await apiRequest("/api/admin/help-requests/reply", {
+          method: "POST",
+          body: JSON.stringify({
+            helpRequestId: Number(selectedRequest.id),
+            reply: trimmedReply,
+          }),
+        });
 
         if (result.success) {
-          toast.success("Reply sent successfully");
-
-          const updated = result.data?.[0];
-          if (!updated) return;
+          toast.success(result.message || "Reply sent successfully");
 
           const updatedRequest: RequestDetails = {
             ...selectedRequest,
-            reply: updated.reply,
-            status: updated.status,
+            reply: trimmedReply,
+            status: "Read",
           };
 
           setSelectedRequest(updatedRequest);
-          setHelpDetailCache(updated.id, updatedRequest);
+          setHelpDetailCache(selectedRequest.id, updatedRequest);
 
-          setRequests((prev) =>
-            prev.map((r) =>
-              r.id === updated.id ? { ...r, status: "Read" } : r
-            )
-          );
+          setRequests((prev) => {
+            const next = prev.map((r) =>
+              r.id === selectedRequest.id
+                ? { ...r, reply: trimmedReply, status: "Read" as const }
+                : r,
+            );
+            setHelpListCache(next);
+            return next;
+          });
         }
       } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to send reply"
-        );
+        toast.error(err instanceof Error ? err.message : "Failed to send reply");
+        throw err;
       }
     },
-    [selectedRequest]
+    [selectedRequest],
   );
 
-  /* =========================
-     FETCH LIST
-  ========================= */
   useEffect(() => {
     let isMounted = true;
 
     const fetchRequests = async () => {
       try {
         const result = await apiRequest("/api/admin/help-requests/getAll");
-
-        const formatted: Request[] = result.data.map((r: ApiHelpRequest) => ({
-          id: r.id,
-          name: r.requester?.name || r.firstName || "User",
-          email: r.email || "N/A",
-          subject: r.subject || "No subject",
-          feedback: r.feedback || "No message",
-          status: r.status,
-          reply: r.reply ?? null,
-          avatar: `https://i.pravatar.cc/150?u=${r.id}`,
-        }));
+        const formatted = getPayloadArray(result).map(formatRequest);
 
         if (!isMounted) return;
 
         setRequests((prev) => {
-          const isSame =
-            JSON.stringify(prev) === JSON.stringify(formatted);
+          const isSame = JSON.stringify(prev) === JSON.stringify(formatted);
           return isSame ? prev : formatted;
         });
 
@@ -167,9 +176,15 @@ export default function HelpRequestsPage() {
         const firstUnread = formatted.find((r) => r.status === "Unread");
 
         if (firstUnread) {
-          handleSelect(firstUnread.id);
+          const details = toRequestDetails(firstUnread);
+          setSelectedRequest(details);
+          setHelpDetailCache(firstUnread.id, details);
         } else if (formatted.length > 0) {
-          handleSelect(formatted[0].id);
+          const details = toRequestDetails(formatted[0]);
+          setSelectedRequest(details);
+          setHelpDetailCache(formatted[0].id, details);
+        } else {
+          setSelectedRequest(null);
         }
       } catch (err) {
         const cache = getHelpListCache();
@@ -177,9 +192,7 @@ export default function HelpRequestsPage() {
 
         if (!hasCache && isMounted) {
           setError(
-            err instanceof Error
-              ? err.message
-              : "Failed to fetch help requests"
+            err instanceof Error ? err.message : "Failed to fetch help requests",
           );
         }
       } finally {
@@ -187,18 +200,14 @@ export default function HelpRequestsPage() {
       }
     };
 
+    clearHelpCache();
     fetchRequests();
 
     return () => {
       isMounted = false;
     };
-  }, [handleSelect]);
+  }, []);
 
-  /* =========================
-     UI
-  ========================= */
-
-  // ✅ FULL PAGE LOADER
   if (loading && requests.length === 0) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -207,7 +216,6 @@ export default function HelpRequestsPage() {
     );
   }
 
-  // ✅ ERROR STATE
   if (error) {
     return (
       <ErrorState message={error} onRetry={() => window.location.reload()} />

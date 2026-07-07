@@ -7,10 +7,11 @@ import { motion } from "framer-motion";
 import { RefreshCw } from "lucide-react";
 
 type ErrorStateProps = {
+  message?: string;
   onRetry?: () => void;
 };
 
-export default function ErrorState({ onRetry }: ErrorStateProps) {
+export default function ErrorState({ message, onRetry }: ErrorStateProps) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#F5F6FA] p-6">
       <div className="text-center w-full max-w-md space-y-2">
@@ -34,6 +35,10 @@ export default function ErrorState({ onRetry }: ErrorStateProps) {
         </motion.div>
 
         {/* 🔥 Retry Button */}
+        {message && (
+          <p className="text-sm font-medium text-gray-600">{message}</p>
+        )}
+
         {onRetry && (
           <motion.button
             whileHover={{ scale: 1.05 }}

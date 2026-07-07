@@ -1,22 +1,28 @@
 // components/common/StatusBadgeButton.tsx
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import { nunito } from "@/lib/fonts";
 
-type StatusType = "Latest" | "Outdated" | "Stable" | "Beta" | string; // allow string for flexibility
+type StatusType = "Latest" | "Outdated" | "Stable" | "Beta" | string;
 
 interface StatusBadgeButtonProps {
   status: StatusType;
   onClick?: () => void;
   className?: string;
+  showArrow?: boolean;
+  isOpen?: boolean;
+  loading?: boolean;
 }
 
 export default function StatusBadgeButton({
   status,
   onClick,
   className = "",
+  showArrow = false,
+  isOpen = false,
+  loading = false,
 }: StatusBadgeButtonProps) {
-  // Status styles (modern, with opacity)
   const getStatusStyles = (status: string) => {
     switch (status.toLowerCase()) {
       case "latest":
@@ -63,11 +69,19 @@ export default function StatusBadgeButton({
     <button
       type="button"
       onClick={onClick}
-      disabled={!onClick}
+      disabled={!onClick || loading}
       aria-label={`Status: ${status}`}
-      className={` ${nunito.className} inline-flex h-10 min-w-30 items-center justify-center rounded-[1px] border px-5 py-2 text-[16px] font-semibold capitalize transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed  ${styles.bg} ${styles.text} ${styles.border} ${styles.hover} ${className} `}
+      aria-expanded={showArrow ? isOpen : undefined}
+      className={` ${nunito.className} inline-flex h-10 min-w-30 items-center justify-center gap-2 rounded-[1px] border px-5 py-2 text-[16px] font-semibold capitalize transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-70 ${styles.bg} ${styles.text} ${styles.border} ${styles.hover} ${className} `}
     >
-      {status}
+      <span>{status}</span>
+      {showArrow && (
+        <ChevronDown
+          size={18}
+          strokeWidth={2.5}
+          className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+        />
+      )}
     </button>
   );
 }
